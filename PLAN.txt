@@ -1,0 +1,190 @@
+PLAN: "JODER_ENRIQUEEE" WEB APP - v1 (AUTH + TASKS + CATEGORIES)
+===============================================================
+
+STACK
+-----
+Plain PHP (PDO, prepared statements) + MySQL on XAMPP.
+Server-rendered HTML with Bootstrap 5 (CDN).
+No build step, no framework.
+
+1. DATABASE CHANGES (joder.sql)
+------------------------------
+- Add `password` VARCHAR(255) NOT NULL to `Usuario` (for password_hash).
+- Add UNIQUE on `Usuario.Mote` (so handles are unique).
+- Change `tarea.id_categoria` FK to ON DELETE SET NULL so a category can be
+  deleted without orphaning/blocking tasks (column is already nullable).
+- Optional (recommended): add `creado_en` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  to `categoria` and `tarea` for stable ordering.
+
+2. FILE STRUCTURE (at project root, served by htdocs)
+----------------------------------------------------
+config/db.php          PDO connection (localhost, root, no pass, db name)
+includes/auth.php      session start, login helpers, require_login(), current_user()
+includes/header.php    Bootstrap nav, flashes
+includes/footer.php
+register.php           Mote, Nombre, email, password -> hash -> insert
+login.php              email + password -> password_verify -> $_SESSION
+logout.php             destroy session
+index.php              redirect: logged in -> dashboard, else -> login
+dashboard.php          overview counts (tasks pending/done, categories)
+tareas.php             list + create + toggle + edit + delete
+categorias.php         list + create + delete
+assets/css/style.css   small overrides (optional)
+
+3. AUTH FLOW
+------------
+- register.php: validate (email format, Mote/email uniqueness, password
+  length), password_hash(PASSWORD_DEFAULT), insert.
+- login.php: fetch by email, password_verify, set $_SESSION['email'].
+- logout.php: session_destroy.
+- require_login() guards every protected page; redirect to login.php otherwise.
+
+4. TASKS (tareas.php)
+---------------------
+- Create task: `nombre` + optional `categoria` (only user's own categories).
+  `completada` defaults to 0.
+- List logged user's tasks, with filter (all / pending / done / by category).
+- Toggle complete (POST), edit name/category, delete.
+- All queries scoped to `ID_usuario = session email` (ownership checks on every
+  mutation).
+
+5. CATEGORIES (categorias.php)
+-----------------------------
+- Create (`nombre`, `id_creador` = session email), list, delete.
+- Deleting a category sets its tasks' `id_categoria` to NULL (via the FK change
+  above).
+
+6. CROSS-CUTTING
+----------------
+- PDO prepared statements everywhere; htmlspecialchars on all output.
+- Simple CSRF token on POST forms (session-stored).
+- Session cookie httponly.
+- Errors shown via flash messages in header.php.
+
+7. DEFERRED TO v2
+-----------------
+- INFODUMPS + reaccion tables stay in schema but get no UI yet.
+
+VERIFICATION
+------------
+- Import joder.sql in phpMyAdmin (or `mysql < joder.sql`), start Apache/MySQL,
+  hit http://localhost/JODER_ENRIQUEEE/, register -> login -> create category
+  -> create/toggle/delete task.
+
+OPEN DECISIONS
+--------------
+1. Add `creado_en` timestamps? (recommend yes)
+2. DB name/user - assume `joder` db, `root` / no password (XAMPP default)?
+3. Include CSRF tokens in v1, or skip for simplicity?
+
+
+================================================================
+DEPLOYMENT: SAFE SETUP ON INFINITYFREE HOSTING
+================================================================
+
+CONSTRAINTS
+-----------
+- No shell access, no environment variables, mail() disabled.
+- All secrets must live in a file that is NEVER committed and is protected
+  on the server.
+- MySQL host/user/name/password are all prefixed (e.g. sqlXXX.infinityfree.com,
+  if0_XXXXXXX, if0_XXXXXXX_dbname).
+
+1. SECRET HANDLING STRATEGY
+---------------------------
+- Never commit credentials. .gitignore:
+    config/config.php
+    config/*.local.php
+    .env
+    *.log
+    *.sql (except joder.sql / schema.sql)
+- Commit a template only: config/config.example.php with placeholders.
+- Config returns an array with per-environment credentials; config/db.php
+  selects the block by hostname (or an APP_ENV constant), so the SAME code runs
+  locally and in prod with zero edits:
+
+    // config/config.php  (GITIGNORED - created on each machine)
+    return [
+      'local' => [
+        'db'    => ['host' => 'localhost', 'name' => 'joder',
+                    'user' => 'root', 'pass' => ''],
+        'debug' => true,
+      ],
+      'production' => [
+        'db'    => ['host' => 'sqlXXX.infinityfree.com',
+                    'name' => 'if0_XXXXXXX_joder',
+                    'user' => 'if0_XXXXXXX', 'pass' => 'REAL_PASSWORD'],
+        'debug' => false,
+      ],
+    ];
+
+2. PROTECTING SECRETS ON THE SERVER (pick one)
+----------------------------------------------
+- Option A - Outside webroot (safest): on InfinityFree, upload the config to a
+  folder NEXT TO htdocs (e.g. private/config.php), loaded via a path resolved in
+  db.php. Not reachable by URL at all.
+- Option B - In-project + .htaccess deny (simpler, local parity): keep config/
+  and includes/ in the project and block web access:
+
+    <IfModule mod_authz_core.c>
+      Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+      Order allow,deny
+      Deny from all
+    </IfModule>
+
+3. HARDENED .htaccess (project root)
+------------------------------------
+- Force HTTPS: redirect http -> https (InfinityFree offers free SSL).
+- Disable directory listing: Options -Indexes
+- Deny dotfiles (.git, .env, *.sql dumps).
+- Production PHP flags: display_errors Off, log_errors On.
+
+4. ENVIRONMENT-AWARE PHP SETTINGS
+---------------------------------
+- config/bootstrap.php (loaded by every page): if debug -> show errors; else ->
+  hide and log. Session cookie flags: httponly, samesite=Lax, and secure when
+  HTTPS.
+
+5. DATABASE SETUP ON INFINITYFREE
+---------------------------------
+- Create the DB in the control panel; note host, DB name, user, password (all
+  prefixed if0_...).
+- Import joder.sql via their phpMyAdmin (tables are InnoDB, FKs fine).
+- Keep a clean schema.sql = current joder.sql for fresh installs; future changes
+  go in migrations/ files so prod can be updated without dropping data.
+- No cron, no mail -> confirm no feature depends on them (v1 does not).
+
+6. DEPLOYMENT WORKFLOW
+----------------------
+- Build a clean package excluding gitignored files:
+    git archive --format=zip --output=deploy.zip HEAD
+- Upload via FTP (FileZilla) / File Manager into htdocs.
+- Create config/config.php ON THE SERVER with prod creds (or upload Option A
+  file).
+- First-run checklist: import DB -> create config -> visit over HTTPS ->
+  register/login.
+
+7. OPERATIONAL SAFETY
+---------------------
+- Backup: periodic DB export from phpMyAdmin; keep dumps out of git.
+- Rotate DB password if it is ever committed.
+- Document both environments in README (non-secret values only).
+
+DELIVERABLES ADDED TO v1 BY THIS PLAN
+-------------------------------------
+- .gitignore
+- config/config.example.php
+- config/bootstrap.php (env selection + session hardening)
+- root .htaccess, config/.htaccess, includes/.htaccess
+- README deploy section
+
+DEPLOYMENT DECISIONS NEEDED
+---------------------------
+1. Config placement: Option A (outside webroot, safest) or Option B (in-project
+   + .htaccess)?
+2. Secrets format: PHP array config (recommended, no parser) or .env-style?
+3. Add schema.sql + migrations/ now, or keep everything in joder.sql for v1?
+4. Want a one-command deploy script (build zip + optional FTP upload), or
+   manual upload is fine?

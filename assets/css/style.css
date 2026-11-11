@@ -1,0 +1,24 @@
+/* JODER_ENRIQUEEE - small overrides on top of Bootstrap */
+body {
+    min-height: 100vh;
+}
+
+.navbar-brand {
+    letter-spacing: .5px;
+}
+
+.table > :not(caption) > * > * {
+    vertical-align: middle;
+}
+
+.cookie-consent {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1080;
+    padding: .75rem 0;
+    background: rgba(33, 37, 41, .97);
+    color: #fff;
+    box-shadow: 0 -.25rem .75rem rgba(0, 0, 0, .25);
+}

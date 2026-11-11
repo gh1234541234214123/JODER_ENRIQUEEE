@@ -1,0 +1,26 @@
+# Local secrets / config - NEVER commit
+config/config.php
+config/*.local.php
+.env
+
+# Logs
+*.log
+
+# Build output
+/dist/
+deploy.zip
+
+# Generated / uploaded favicon
+/favicon.svg
+/favicon.png
+/favicon.ico
+/favicon.gif
+/favicon.webp
+/favicon.jpg
+/favicon.jpeg
+
+# SQL: keep schema + migrations, ignore stray dumps
+*.sql
+!schema.sql
+!joder.sql
+!migrations/*.sql
