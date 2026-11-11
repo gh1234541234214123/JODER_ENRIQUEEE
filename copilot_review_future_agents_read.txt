@@ -1,0 +1,25 @@
+Project review: JODER_ENRIQUEEE
+
+Status
+- The repository is largely aligned with the v1 plan in PLAN.txt.
+- The implemented app includes auth, CSRF, session hardening, remember-me login, dashboard, task management, and category management.
+- The workspace diagnostics report no PHP syntax errors.
+
+Evidence from code
+- Auth, session, flash, and CSRF helpers: includes/auth.php
+- Session cookie hardening, idle timeout, and DB-backed session handling: includes/session.php and config/bootstrap.php
+- Login flow with password_verify and session regeneration: login.php
+- Registration flow and password_hash insertion: register.php
+- Task CRUD and ownership checks: tareas.php
+- Category CRUD and uncategorized-task behavior: categorias.php
+- Schema expectations: schema.sql and joder.sql
+
+Plan drift / stale notes
+- PLAN.txt still contains a "REMAINING / FOLLOW-UPS" section that mentions the schema create database / use statements as a problem, but the current SQL files already include those statements.
+- The plan was written as if some deployment/schema items were still open, but the repo has since implemented the main v1 flow and deployment hardening.
+- This is not a code bug; it is a documentation drift issue in the plan.
+
+Conclusion
+- Good v1 implementation match for the codebase.
+- Final handoff is mostly valid, but the plan should be cleaned up to remove stale notes before calling it a finished final artifact.
+- Future agents should treat the code as the source of truth and the plan as a useful but slightly outdated historical document.

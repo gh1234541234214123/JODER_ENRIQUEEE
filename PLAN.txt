@@ -1,6 +1,69 @@
 PLAN: "JODER_ENRIQUEEE" WEB APP - v1 (AUTH + TASKS + CATEGORIES)
 ===============================================================
 
+PROGRESS (updated 2026-11-11)
+------------------------------
+STATUS: v1 AND the InfinityFree deployment section are IMPLEMENTED.
+All PHP files pass `php -l`; working tree clean (single commit).
+
+DONE - v1
+  [x] Usuario.password VARCHAR(255) + UNIQUE(Mote)
+  [x] tarea.id_categoria FK -> ON DELETE SET NULL (column nullable)
+  [x] creado_en timestamps on categoria and tarea
+  [x] config/db.php (PDO, prepared statements, utf8mb4)
+  [x] includes/auth.php (current_user, require_login, CSRF, flash)
+  [x] includes/header.php + includes/footer.php (Bootstrap 5 nav/flashes)
+  [x] register.php (validation, uniqueness, password_hash)
+  [x] login.php (password_verify, session_regenerate_id)
+  [x] logout.php (session destroy, POST + CSRF)
+  [x] index.php (redirect dashboard/login)
+  [x] dashboard.php (total/pending/done/category counts)
+  [x] tareas.php (create/list/filter/toggle/update/delete, ownership checks)
+  [x] categorias.php (create/list/delete, tasks survive as uncategorized)
+  [x] assets/css/style.css
+  [x] CSRF on every POST, htmlspecialchars output, httponly session cookie
+  [x] INFODUMPS + reaccion tables kept, no UI (deferred to v2)
+
+DONE - deployment / hardening
+  [x] .gitignore (secrets, logs, dumps, dist)
+  [x] config/config.example.php (template)
+  [x] config/bootstrap.php (env auto-select, error handling, session wiring)
+  [x] root .htaccess + config/.htaccess + includes/.htaccess
+  [x] schema.sql (canonical) + joder.sql (mirror)
+  [x] migrations/0001_add_auth_and_timestamps.sql
+  [x] migrations/0002_sessions_and_remember.sql
+  [x] deploy.ps1 (clean upload ZIP, excludes secrets)
+  [x] README deploy + setup + security sections
+
+EXTRAS (beyond original plan, implemented)
+  [x] setup.php web installer (creates DB, applies schema, writes config)
+  [x] DB-backed sessions (sesion table) with file fallback
+  [x] "Remember me" persistent login (remember_token, rotating tokens)
+  [x] Idle timeout (SESSION_IDLE) + cookie consent banner
+  [x] Favicon generator/uploader (favicon.php + includes/favicon.php)
+  [x] Configurable SITE_NAME used across navbar/titles/footer
+
+DECISIONS RESOLVED
+  - creado_en timestamps: YES (added to categoria + tarea)
+  - DB name/user: `joder` DB; credentials now come from config/config.php
+    (the installer generates it; local defaults root/no-pass in example)
+  - CSRF tokens: YES, on all POST forms
+  - Config placement: Option B (in-project + .htaccess deny)
+  - Secrets format: PHP array config (no .env parser)
+  - schema.sql + migrations/: YES
+  - Deploy script: YES (deploy.ps1 builds the ZIP)
+
+REMAINING / FOLLOW-UPS
+  [ ] schema.sql and joder.sql start with `create database`/`use joder`;
+      setup.php strips them, but a MANUAL phpMyAdmin import on InfinityFree
+      can fail (no CREATE privilege). Consider a prod-import note or a
+      schema variant without those two statements.
+  [ ] setup.php must be deleted on the server after install (documented).
+  [ ] config/config.php is gitignored; exists locally only.
+  [ ] v2: build INFODUMPS + reaccion UI.
+
+===============================================================
+
 STACK
 -----
 Plain PHP (PDO, prepared statements) + MySQL on XAMPP.
@@ -188,3 +251,5 @@ DEPLOYMENT DECISIONS NEEDED
 3. Add schema.sql + migrations/ now, or keep everything in joder.sql for v1?
 4. Want a one-command deploy script (build zip + optional FTP upload), or
    manual upload is fine?
+
+   (also add an account page, and if you read this plan, please, for the love of fuck, remember to expand on the planning part, and change the schema if necesary)
